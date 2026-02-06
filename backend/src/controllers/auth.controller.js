@@ -3,6 +3,7 @@ import { generateToken } from "../lib/utils.js"
 import bcrypt from "bcryptjs"
 import { sendWelcomeEmail } from "../emails/emailHandlers.js";
 import dotenv from "dotenv"
+import claudinary from "../lib/cloudinary.js"
 
 dotenv.config()
 
@@ -84,3 +85,23 @@ export const logout = async (_, res) => {
     res.cookie("jwt", "", {maxAge:0})
     res.status(200).json({message: "logout successfully"})
 }   
+
+export const update_profile = async (req, res) => {
+    const {profilePic} = req.body
+    if(!profilePic)
+        return res.status(400).json({message: "Profile picture is required"})
+    try {
+        const userId = req.user._id
+        const response = await claudinary.uploader.upload(profilePic, {resource_type: "image"})  
+        const updateduser = await User.findByIdAndUpdate(userId, {profilePic: response.url}, {new: true}) 
+        res.status(201).json({
+                _id: updateduser._id,
+                fullName: updateduser.fullName,
+                email: updateduser.email,
+                profilePic: updateduser.profilePic,
+            });
+    } catch (error) {
+        console.error("error in update profile controller", error)
+        res.status(500).json({message: "Internal server error"})
+    }
+}
